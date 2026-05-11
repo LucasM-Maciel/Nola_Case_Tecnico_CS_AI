@@ -1,0 +1,1 @@
+# Nola_Case_Tecnico_CS_AI
