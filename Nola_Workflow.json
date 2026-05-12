@@ -1,0 +1,570 @@
+{
+  "name": "Nola_Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -64,
+        0
+      ],
+      "id": "79650af0-cb5d-48f5-8b44-f80af02100ae",
+      "name": "When chat message received",
+      "webhookId": "532e3b42-9c4f-4682-b4ba-02f322658ba0"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -224,
+        272
+      ],
+      "id": "6a5a7301-2332-4f4a-ab60-5a8a275429c2",
+      "name": "Telegram Trigger",
+      "webhookId": "30ce396c-f7c1-4d72-bd66-4b5d13f195d4",
+      "credentials": {
+        "telegramApi": {
+          "id": "CZxU7lieGia3Ope0",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        496,
+        0
+      ],
+      "id": "0fbfdcc4-21b3-44b4-8284-9299452a824f",
+      "name": "Chamar IA Groq",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Qbi5Ft3CiArNCy3i",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const answer = $input.first().json.choices[0].message.content;\nreturn [{ json: { output: answer } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        0
+      ],
+      "id": "538de41c-5efc-42d3-a42c-67779b0ad215",
+      "name": "Extrair resposta"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nconst userMessage = $('Telegram Trigger').first().json.message.text;\n\nconst isBug = /erro|bug|não funciona|nao funciona|travou|travando|quebrou|caiu|parou/i.test(userMessage);\n\nlet knowledgeBase = 'BASE DE CONHECIMENTO - NOLA: ';\nfor (const row of rows) {\n  const categoria = row.json.categoria || '';\n  const pergunta = row.json.pergunta || '';\n  const resposta = row.json.resposta || '';\n  if (categoria && pergunta && resposta) {\n    knowledgeBase += `[${categoria}] ${pergunta} -> ${resposta} | `;\n  }\n}\n\nconst systemPrompt = isBug\n  ? `Você é a Nola, assistente virtual da plataforma Nola de gestão de restaurantes. O cliente está relatando um problema técnico. Responda com empatia, peça mais detalhes sobre qual tela ou funcionalidade apresentou o erro, e informe que vai encaminhar para o time técnico. Não tente resolver bugs sozinho.`\n  : `Você é a Nola, assistente virtual da plataforma Nola de gestão de restaurantes. Responda de forma clara e amigável. Use APENAS a base de conhecimento abaixo. Se não souber responder, diga exatamente: \"Não encontrei essa informação na minha base. Para te ajudar melhor, pode me informar seu nome e e-mail? Nossa equipe de CS entrará em contato em até 2 horas.\" BASE DE CONHECIMENTO: ${knowledgeBase}`;\n\nreturn [{\n  json: {\n    model: \"llama-3.3-70b-versatile\",\n    messages: [\n      { role: \"system\", content: systemPrompt },\n      { role: \"user\", content: userMessage }\n    ],\n    temperature: 0.3,\n    max_tokens: 500\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        352
+      ],
+      "id": "10161b6a-d09e-44b9-896c-ba100f6aa602",
+      "name": "Montar contexto para a IA (telegram)"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1GAhyWnlgJ-8nI-Msbh5Veebc-Z665g--Chzuue5BBqg",
+          "mode": "list",
+          "cachedResultName": "Nola_Case_Técnico",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GAhyWnlgJ-8nI-Msbh5Veebc-Z665g--Chzuue5BBqg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Página1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GAhyWnlgJ-8nI-Msbh5Veebc-Z665g--Chzuue5BBqg/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        128,
+        0
+      ],
+      "id": "36580334-bc0b-4b00-a629-b029c3118e3b",
+      "name": "Buscar base de conhecimento",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bbDcP9l40DzqFE9J",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1GAhyWnlgJ-8nI-Msbh5Veebc-Z665g--Chzuue5BBqg",
+          "mode": "list",
+          "cachedResultName": "Nola_Case_Técnico",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GAhyWnlgJ-8nI-Msbh5Veebc-Z665g--Chzuue5BBqg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Página1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GAhyWnlgJ-8nI-Msbh5Veebc-Z665g--Chzuue5BBqg/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        128,
+        352
+      ],
+      "id": "68e63b7c-a787-4bdf-ac4b-408370cf5a0d",
+      "name": "Buscar base de conhecimento (Telegram)",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "bbDcP9l40DzqFE9J",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        496,
+        352
+      ],
+      "id": "63234cb1-764e-4675-b5ac-af18e779b33c",
+      "name": "Chamar IA Groq (Telegram)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Qbi5Ft3CiArNCy3i",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawAnswer = $input.first().json.choices[0].message.content;\nconst chatId = $('Telegram Trigger').first().json.message.chat.id;\nconst userMessage = $('Telegram Trigger').first().json.message.text;\n\nconst answer = rawAnswer\n  .replace(/\\*\\*/g, '')\n  .replace(/\\*/g, '')\n  .replace(/_{1,2}/g, '')\n  .replace(/#{1,6} /g, '');\n\nconst isFallback = /não encontrei|nao encontrei|entrar em contato/i.test(answer);\n\nreturn [{ json: { answer, chatId, userMessage, isFallback } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        352
+      ],
+      "id": "e70a205d-2417-4b07-ba72-e0d7ec6816cf",
+      "name": "Extrair resposta (Telegram)"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extrair resposta (Telegram)').first().json.chatId }}",
+        "text": "={{ $('Extrair resposta (Telegram)').first().json.answer }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1280,
+        368
+      ],
+      "id": "3b65e5a9-e724-4aea-b9d9-c468f2cc1126",
+      "name": "Enviar resposta ao cliente",
+      "webhookId": "41f5eea9-4bca-4af7-9baa-0413bbd48ae0",
+      "credentials": {
+        "telegramApi": {
+          "id": "CZxU7lieGia3Ope0",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nconst userMessage = $('When chat message received').first().json.chatInput;\n\nconst isBug = /erro|bug|não funciona|nao funciona|travou|travando|quebrou|caiu|parou/i.test(userMessage);\n\nlet knowledgeBase = 'BASE DE CONHECIMENTO - NOLA: ';\nfor (const row of rows) {\n  const categoria = row.json.categoria || '';\n  const pergunta = row.json.pergunta || '';\n  const resposta = row.json.resposta || '';\n  if (categoria && pergunta && resposta) {\n    knowledgeBase += `[${categoria}] ${pergunta} -> ${resposta} | `;\n  }\n}\n\nconst systemPrompt = isBug\n  ? `Você é a Nola, assistente virtual da plataforma Nola de gestão de restaurantes. O cliente está relatando um problema técnico. Responda com empatia, peça mais detalhes sobre qual tela ou funcionalidade apresentou o erro, e informe que vai encaminhar para o time técnico. Não tente resolver bugs sozinho.`\n  : `Você é a Nola, assistente virtual da plataforma Nola de gestão de restaurantes. Responda de forma clara e amigável. Use APENAS a base de conhecimento abaixo. Se não souber responder, diga exatamente: \"Não encontrei essa informação na minha base. Para te ajudar melhor, pode me informar seu nome e e-mail? Nossa equipe de CS entrará em contato em até 2 horas.\" BASE DE CONHECIMENTO: ${knowledgeBase}`;\n\nreturn [{\n  json: {\n    model: \"llama-3.3-70b-versatile\",\n    messages: [\n      { role: \"system\", content: systemPrompt },\n      { role: \"user\", content: userMessage }\n    ],\n    temperature: 0.3,\n    max_tokens: 500\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        0
+      ],
+      "id": "ec00be2b-c652-433b-84ec-2e2125623a0a",
+      "name": "Montar contexto para a IA"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2e96eb15-2215-4f10-b867-e5887dd0b15d",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/start",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -48,
+        272
+      ],
+      "id": "4d903973-74b6-4bf4-ab99-53ce52a45067",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "=Olá! Sou a Nola, assistente virtual de suporte da plataforma Nola de gestão de restaurantes.\n\nPosso te ajudar com dúvidas sobre:\n• Cardápio e produtos\n• Pedidos e comandas\n• Financeiro e relatórios\n• Delivery e integrações\n• Estoque e usuários\n\nÉ só me perguntar!",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        128,
+        192
+      ],
+      "id": "2730e75a-2522-49ad-a74e-6f40c43664e5",
+      "name": "Enviar resposta ao cliente1",
+      "webhookId": "41f5eea9-4bca-4af7-9baa-0413bbd48ae0",
+      "credentials": {
+        "telegramApi": {
+          "id": "CZxU7lieGia3Ope0",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "66e9c47c-831a-4e5a-b443-4c25f4ec2063",
+              "leftValue": "={{ $json.isFallback }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
+        352
+      ],
+      "id": "235d5855-2834-434a-8bda-fea251019253",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1GAhyWnlgJ-8nI-Msbh5Veebc-Z665g--Chzuue5BBqg",
+          "mode": "list",
+          "cachedResultName": "Nola_Case_Técnico",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GAhyWnlgJ-8nI-Msbh5Veebc-Z665g--Chzuue5BBqg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1469828586,
+          "mode": "list",
+          "cachedResultName": "Dúvidas sem resposta",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1GAhyWnlgJ-8nI-Msbh5Veebc-Z665g--Chzuue5BBqg/edit#gid=1469828586"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "data": "={{ new Date().toLocaleString('pt-BR') }}",
+            "canal": "Telegram",
+            "pergunta": "={{ $json.userMessage }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "canal",
+              "displayName": "canal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pergunta",
+              "displayName": "pergunta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1056,
+        144
+      ],
+      "id": "ca3f4f77-fcab-400b-b8ce-14c2486de445",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LOoh7M5BULrbRTHg",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Buscar base de conhecimento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chamar IA Groq": {
+      "main": [
+        [
+          {
+            "node": "Extrair resposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair resposta": {
+      "main": [
+        []
+      ]
+    },
+    "Montar contexto para a IA (telegram)": {
+      "main": [
+        [
+          {
+            "node": "Chamar IA Groq (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar base de conhecimento": {
+      "main": [
+        [
+          {
+            "node": "Montar contexto para a IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar base de conhecimento (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Montar contexto para a IA (telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chamar IA Groq (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Extrair resposta (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair resposta (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar contexto para a IA": {
+      "main": [
+        [
+          {
+            "node": "Chamar IA Groq",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Enviar resposta ao cliente1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar base de conhecimento (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar resposta ao cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Enviar resposta ao cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b9c888b0-872e-46f5-9a45-8cf93ce885df",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bef254bce0049474bd6201fe0268953985ef50fdf1c1a5cc874a431051a786bd"
+  },
+  "id": "bqTvYzu330VmQBFp",
+  "tags": []
+}
